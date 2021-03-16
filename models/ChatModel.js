@@ -22,9 +22,14 @@ const schema = new Schema({
     friends: [
         {
             name: String,
-            id: String,
             date: Date,
             sex: String
+        }
+    ],
+    waitingFriends: [
+        {
+            name: String,
+            date: Date
         }
     ],
     groups: [
