@@ -11,7 +11,7 @@ const io = require('socket.io')(server, {
 })
 const ChatModel = require('./models/ChatModel')
 const messages = []
-const users = []
+let users = []
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -69,29 +69,75 @@ app.post('/confirmFriend', async (req, res) => {
         const waiterPerson = await ChatModel.findOne({ login: waiter })
         const recipientPerson = await ChatModel.findOne({ login: recipient })
         await ChatModel
-        .findOneAndUpdate({ login: recipient }, { "$push": { friends: { name: waiter, date: new Date(), sex: waiterPerson.sex } } })
-        .findOneAndUpdate({ login: waiter }, { "$push": { friends: { name: recipient, date: new Date(), sex: recipientPerson.sex } } })
+            .findOneAndUpdate({ login: recipient }, { "$push": { friends: { name: waiter, date: new Date(), sex: waiterPerson.sex } } })
+            .findOneAndUpdate({ login: waiter }, { "$push": { friends: { name: recipient, date: new Date(), sex: recipientPerson.sex } } })
     }
-    await ChatModel.findOneAndUpdate({ login: recipient }, { "$pull": { waitingFriends: { name: waiter } } }, {multi: true}); 
+    await ChatModel.findOneAndUpdate({ login: recipient }, { "$pull": { waitingFriends: { name: waiter } } }, { multi: true });
 })
 
 
 io.on('connection', socket => {
+    let client = {}
     socket.on('add user to listeners', login => {
         users.push({ id: socket.id, login })
+        client = { id: socket.id, login }
     })
-    socket.on('send private message', ({name, to, mess}) => {
-        const recipientId = users.find(user => user.login === to).id
-        socket.to(recipientId).emit('private message', {from: name, mess})
-    })    
+    socket.on('send private message', async ({ name, to, mess }) => {
+        const recipient = users.find(user => user.login === to)
+        if (recipient.id) { 
+            socket.to(recipient.id).emit('private message', { from: name, mess })
+        }
+        const friends = [name, to] 
+        for (const number in friends) {
+            let senderLogin = name
+            let recipientLogin = to
+
+            if(number == 1){
+                senderLogin = to, 
+                recipientLogin = name 
+            }
+
+            const sender = await ChatModel.findOne({ login: senderLogin })
+            const recipientIndex = sender.conversations.findIndex(el => el.login === recipientLogin)
+
+            if (recipientIndex !== -1) {
+                await ChatModel.findOneAndUpdate({ login: senderLogin, "conversations.login": recipientLogin }, {
+                    "$push": {
+                        "conversations.$.dialogues": {
+                            date: new Date(),
+                            text: mess
+                        }
+                    }
+                })
+            }
+            else {
+                await ChatModel.findOneAndUpdate({ login: senderLogin }, {
+                    "$push": {
+                        conversations:
+                        {
+                            login: recipientLogin,
+                            dialogues:
+                            {
+                                date: new Date(),
+                                text: mess
+                            }
+                        }
+                    } 
+                })
+            }
+        }
+    })
+    socket.on('disconnect', () => {
+        users = users.filter(user => user.login !== client.login)
+    })
 })
-  
+
 
 
 mongoose.connect("mongodb://localhost:27017/chatDB", {
     useUnifiedTopology: true,
-    useNewUrlParser: true, 
-    useFindAndModify: false 
+    useNewUrlParser: true,
+    useFindAndModify: false
 });
 
 server.listen(1000)
