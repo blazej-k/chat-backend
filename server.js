@@ -80,18 +80,18 @@ io.on('connection', socket => {
     socket.on('add user to listeners', login => {
         users.push({ id: socket.id, login })
     })
-    socket.on('test', ({ name }) => {
-        messages.push(name)
-        io.emit('test', messages)
-    })
+    socket.on('send private message', ({name, to, mess}) => {
+        const recipientId = users.find(user => user.login === to).id
+        socket.to(recipientId).emit('private message', {from: name, mess})
+    })    
 })
-
+  
 
 
 mongoose.connect("mongodb://localhost:27017/chatDB", {
     useUnifiedTopology: true,
-    useNewUrlParser: true,
-    useFindAndModify: false
+    useNewUrlParser: true, 
+    useFindAndModify: false 
 });
 
 server.listen(1000)
