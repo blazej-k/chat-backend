@@ -32,10 +32,23 @@ const schema = new Schema({
             date: Date
         }
     ],
+    waitingGroups: [
+        {
+            name: String,
+            date: Date
+        }
+    ],
     groups: [
         {
             name: String,
-            members: Number
+            members: Number,
+            dialogues: [
+                {
+                    login: String,
+                    date: Date,
+                    text: String
+                }
+            ]
         }
     ]
 })

@@ -10,8 +10,10 @@ const io = require('socket.io')(server, {
     }
 })
 const ChatModel = require('./models/ChatModel')
+const CommunityModel = require('./models/CommunityModel')
 const messages = []
 let users = []
+const groups = []
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -54,16 +56,16 @@ app.post('/signIn', async (req, res) => {
         })
     }
     else {
-        res.send('null')
+        res.send({message: 'Invalid login or password'})
     }
 })
 
-app.post('/inviteFriend', async (req, res) => {
+app.post('/inviteFriend', async (req) => {
     const { from, to } = req.body
     await ChatModel.findOneAndUpdate({ login: to }, { "$push": { waitingFriends: { name: from, date: new Date() } } })
 })
 
-app.post('/confirmFriend', async (req, res) => {
+app.post('/confirmFriend', async (req) => {
     const { waiter, decision, recipient } = req.body
     if (decision === 'accept') {
         const waiterPerson = await ChatModel.findOne({ login: waiter })
@@ -78,10 +80,42 @@ app.post('/confirmFriend', async (req, res) => {
 
 io.on('connection', socket => {
     let client = {}
+
+    const community = await CommunityModel.find({})
+    for(group in community.groups){
+        groups.push(group)
+    }
+
     socket.on('add user to listeners', login => {
         users.push({ id: socket.id, login })
         client = { id: socket.id, login }
     })
+
+    socket.on('create group', async(groupName, login) => {
+        const groupObj = {
+            name: groupName,
+            members: 1,
+        }
+
+        await ChatModel.findOneAndUpdate({login}, {
+            "$push": {
+                ...groupObj,
+                dialogues: []
+            }
+        })
+
+        await CommunityModel.updateOne({
+            "$push": {
+                groups: groupObj
+            }
+        })
+
+        groups.push(groupObj)
+        socket.join()
+    })
+
+    socket.on('join to group', (login, groupId))
+
     socket.on('send private message', async ({ name, to, mess }) => {
         const recipient = users.find(user => user.login === to)
         if (recipient.id) { 
@@ -127,6 +161,7 @@ io.on('connection', socket => {
             }
         }
     })
+
     socket.on('disconnect', () => {
         users = users.filter(user => user.login !== client.login)
     })
