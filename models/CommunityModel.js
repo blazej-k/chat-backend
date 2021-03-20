@@ -1,3 +1,4 @@
+const { ObjectId } = require('bson')
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
@@ -13,9 +14,15 @@ const schema = new Schema({
     groups: [
         {
             name: String,
-            members: Number
+            members: [
+                {
+                    login: String,
+                    sex: String,
+                }
+            ],
+            groupId: String
         }
     ]
 })
 
-module.exports = mongoose.model('CommunitySchema', schema, 'Chat')
+module.exports = mongoose.model('CommunityModel', schema, 'Community')

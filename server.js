@@ -9,8 +9,10 @@ const io = require('socket.io')(server, {
         methods: ["GET", "POST"]
     }
 })
+const { nanoid } = require('nanoid')
 const ChatModel = require('./models/ChatModel')
-const CommunityModel = require('./models/CommunityModel')
+const CommunityModel = require('./models/CommunityModel');
+
 const messages = []
 let users = []
 const groups = []
@@ -21,20 +23,29 @@ app.use(cors())
 app.post('/saveUser', (req, res) => {
     const { login, password, sex } = req.body
     const model = new ChatModel({
-        login, password, sex, active: true, date: new Date()
+        login,
+        password,
+        sex,
+        active: true,
+        date: new Date(),
+        waitingFriends: [],
+        waitingGroups: [],
+        friends: [],
+        groups: []
     })
     model.save(err => {
         if (err) {
             console.log(err)
         }
         else {
-            const { login, sex, friends, conversations, waitingFriends, groups } = model
+            const { login, sex, friends, conversations, waitingFriends, groups, waitingGroups } = model
             res.send({
                 login,
                 sex,
                 friends,
                 conversations,
                 waitingFriends,
+                waitingGroups,
                 groups
             })
         }
@@ -45,18 +56,19 @@ app.post('/signIn', async (req, res) => {
     const { login, password } = req.body
     const user = await ChatModel.findOne({ login, password })
     if (user) {
-        const { login, sex, friends, conversations, waitingFriends, groups } = user
+        const { login, sex, friends, conversations, waitingFriends, waitingGroups, groups } = user
         res.send({
             login,
             sex,
             friends,
             conversations,
             waitingFriends,
+            waitingGroups,
             groups
         })
     }
     else {
-        res.send({message: 'Invalid login or password'})
+        res.send({ message: 'Invalid login or password' })
     }
 })
 
@@ -77,12 +89,35 @@ app.post('/confirmFriend', async (req) => {
     await ChatModel.findOneAndUpdate({ login: recipient }, { "$pull": { waitingFriends: { name: waiter } } }, { multi: true });
 })
 
+app.post('/createGroup', async (req, res) => {
+    const { groupInfo: { groupName, login, sex } } = req.body
+    const groupId = nanoid()
 
-io.on('connection', socket => {
+    const model = await CommunityModel.findOneAndUpdate({}, {
+        "$push": {
+            groups: {
+                name: groupName,
+                groupId,
+                members: [
+                    {
+                        login,
+                        sex
+                    }
+                ]
+            }
+        }
+    }, { new: true })
+
+    groups.push({ groupName, groupId })
+    res.send(model.groups[model.groups.length - 1])
+})
+
+
+io.on('connection', async (socket) => {
     let client = {}
 
     const community = await CommunityModel.find({})
-    for(group in community.groups){
+    for (group in community.groups) {
         groups.push(group)
     }
 
@@ -91,44 +126,23 @@ io.on('connection', socket => {
         client = { id: socket.id, login }
     })
 
-    socket.on('create group', async(groupName, login) => {
-        const groupObj = {
-            name: groupName,
-            members: 1,
-        }
-
-        await ChatModel.findOneAndUpdate({login}, {
-            "$push": {
-                ...groupObj,
-                dialogues: []
-            }
-        })
-
-        await CommunityModel.updateOne({
-            "$push": {
-                groups: groupObj
-            }
-        })
-
-        groups.push(groupObj)
-        socket.join()
+    socket.on('join to group', async (login, groupId, name) => {
+        socket.join(groupId)
     })
-
-    socket.on('join to group', (login, groupId))
 
     socket.on('send private message', async ({ name, to, mess }) => {
         const recipient = users.find(user => user.login === to)
-        if (recipient.id) { 
+        if (recipient.id) {
             socket.to(recipient.id).emit('private message', { from: name, mess })
         }
-        const friends = [name, to] 
+        const friends = [name, to]
         for (const number in friends) {
             let senderLogin = name
             let recipientLogin = to
 
-            if(number == 1){
-                senderLogin = to, 
-                recipientLogin = name 
+            if (number == 1) {
+                senderLogin = to,
+                    recipientLogin = name
             }
 
             const sender = await ChatModel.findOne({ login: senderLogin })
@@ -156,7 +170,7 @@ io.on('connection', socket => {
                                 text: mess
                             }
                         }
-                    } 
+                    }
                 })
             }
         }
