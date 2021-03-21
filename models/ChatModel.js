@@ -28,25 +28,35 @@ const schema = new Schema({
     ],
     waitingFriends: [
         {
+            sender: String,
             name: String,
             date: Date
         }
     ],
     waitingGroups: [
         {
+            sender: String,
+            login: String,
             name: String,
+            groupId: String,
             date: Date
         }
     ],
     groups: [
         {
             name: String,
-            members: Number,
+            groupId: String,
             dialogues: [
                 {
                     login: String,
                     date: Date,
                     text: String
+                }
+            ],
+            members: [
+                {
+                    login: String,
+                    sex: String,
                 }
             ]
         }

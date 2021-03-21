@@ -14,13 +14,20 @@ const schema = new Schema({
     groups: [
         {
             name: String,
+            groupId: String,
+            dialogues: [
+                {
+                    login: String,
+                    date: Date,
+                    text: String
+                }
+            ],
             members: [
                 {
                     login: String,
                     sex: String,
                 }
-            ],
-            groupId: String
+            ]
         }
     ]
 })

@@ -73,20 +73,38 @@ app.post('/signIn', async (req, res) => {
 })
 
 app.post('/inviteFriend', async (req) => {
-    const { from, to } = req.body
-    await ChatModel.findOneAndUpdate({ login: to }, { "$push": { waitingFriends: { name: from, date: new Date() } } })
+    const { sender, recipient } = req.body.info
+    await ChatModel.findOneAndUpdate({ recipient }, { "$push": { waitingFriends: { name: sender, date: new Date() } } })
 })
 
-app.post('/confirmFriend', async (req) => {
-    const { waiter, decision, recipient } = req.body
+app.post('/inviteGroup', async (req) => {
+    const { recipient, sender, groupName, groupId } = req.body
+    await ChatModel.findOneAndUpdate({ recipient }, { "$push": { waitingGroups: { sender, name, groupId, date: new Date() } } })
+})
+
+app.post('/confirmFriend', async (req, res) => {
+    const { waiter, decision, recipient } = req.body.info
     if (decision === 'accept') {
         const waiterPerson = await ChatModel.findOne({ login: waiter })
-        const recipientPerson = await ChatModel.findOne({ login: recipient })
-        await ChatModel
-            .findOneAndUpdate({ login: recipient }, { "$push": { friends: { name: waiter, date: new Date(), sex: waiterPerson.sex } } })
-            .findOneAndUpdate({ login: waiter }, { "$push": { friends: { name: recipient, date: new Date(), sex: recipientPerson.sex } } })
+        const recipientPerson = await ChatModel.findOne({ login: recipient }) 
+        await ChatModel.findOneAndUpdate({ login: recipient }, { "$push": { friends: { name: waiter, date: new Date(), sex: waiterPerson.sex } } })
+        await ChatModel.findOneAndUpdate({ login: waiter }, { "$push": { friends: { name: recipient, date: new Date(), sex: recipientPerson.sex } } })
+        res.send({name: waiterPerson.login, sex: waiterPerson.sex, date: new Date()})
     }
     await ChatModel.findOneAndUpdate({ login: recipient }, { "$pull": { waitingFriends: { name: waiter } } }, { multi: true });
+})
+ 
+app.post('/confirmGroup', async (req) => {
+    console.log(req.body)
+    // const { waiter, decision, recipient } = req.body
+    // if (decision === 'accept') {
+    //     const waiterPerson = await ChatModel.findOne({ login: waiter })
+    //     const recipientPerson = await ChatModel.findOne({ login: recipient })
+    //     await ChatModel
+    //         .findOneAndUpdate({ login: recipient }, { "$push": { friends: { name: waiter, date: new Date(), sex: waiterPerson.sex } } })
+    //         .findOneAndUpdate({ login: waiter }, { "$push": { friends: { name: recipient, date: new Date(), sex: recipientPerson.sex } } })
+    // }
+    // await ChatModel.findOneAndUpdate({ login: recipient }, { "$pull": { waitingFriends: { name: waiter } } }, { multi: true });
 })
 
 app.post('/createGroup', async (req, res) => {
@@ -109,6 +127,20 @@ app.post('/createGroup', async (req, res) => {
     }, { new: true })
 
     groups.push({ groupName, groupId })
+    res.send(model.groups[model.groups.length - 1])
+})
+
+app.post('/joinToGroup', async (req, res) => {
+    const { group, login } = req.body
+
+    const model = await ChatModel.findOneAndUpdate({ login }, {
+        "$push": {
+            groups: {
+                ...group,
+            }
+        }
+    }, { new: true })
+
     res.send(model.groups[model.groups.length - 1])
 })
 
