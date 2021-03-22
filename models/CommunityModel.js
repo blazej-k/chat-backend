@@ -15,19 +15,6 @@ const schema = new Schema({
         {
             name: String,
             groupId: String,
-            dialogues: [
-                {
-                    login: String,
-                    date: Date,
-                    text: String
-                }
-            ],
-            members: [
-                {
-                    login: String,
-                    sex: String,
-                }
-            ]
         }
     ]
 })

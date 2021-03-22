@@ -108,20 +108,14 @@ app.post('/confirmGroup', async (req) => {
 })
 
 app.post('/createGroup', async (req, res) => {
-    const { groupInfo: { groupName, login, sex } } = req.body
+    const { groupInfo: { groupName } } = req.body
     const groupId = nanoid()
 
     const model = await CommunityModel.findOneAndUpdate({}, {
         "$push": {
             groups: {
                 name: groupName,
-                groupId,
-                members: [
-                    {
-                        login,
-                        sex
-                    }
-                ]
+                groupId
             }
         }
     }, { new: true })
