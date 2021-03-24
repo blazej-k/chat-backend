@@ -21,7 +21,7 @@ const schema = new Schema({
     ],
     friends: [
         {
-            name: String,
+            login: String,
             date: Date,
             sex: String
         }
@@ -29,7 +29,6 @@ const schema = new Schema({
     waitingFriends: [
         {
             sender: String,
-            name: String,
             date: Date
         }
     ],
