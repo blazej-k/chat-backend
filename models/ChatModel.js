@@ -35,15 +35,14 @@ const schema = new Schema({
     waitingGroups: [
         {
             sender: String,
-            login: String,
-            name: String,
+            groupName: String,
             groupId: String,
             date: Date
         }
     ],
     groups: [
         {
-            name: String,
+            groupName: String,
             groupId: String,
             dialogues: [
                 {

@@ -1,4 +1,3 @@
-const { ObjectId } = require('bson')
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
@@ -13,7 +12,7 @@ const schema = new Schema({
     ],
     groups: [
         {
-            name: String,
+            groupName: String,
             groupId: String,
         }
     ]
