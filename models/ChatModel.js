@@ -37,7 +37,13 @@ const schema = new Schema({
             sender: String,
             groupName: String,
             groupId: String,
-            date: Date
+            date: Date,
+            members: [
+                {
+                    login: String,
+                    sex: String,
+                }
+            ]
         }
     ],
     groups: [
