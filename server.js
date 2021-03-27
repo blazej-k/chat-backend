@@ -174,8 +174,12 @@ io.on('connection', async (socket) => {
         client = { id: socket.id, login }
     })
 
-    socket.on('join to group', async (login, groupId, name) => {
+    socket.on('join to group', (groupId) => {
+        console.log('ok', groupId)
         socket.join(groupId)
+    })
+    socket.on('send group message', (groupId, message) => {
+        socket.to(groupId).emit('group message', message)
     })
 
     socket.on('send private message', async ({ name, to, mess }) => {
@@ -186,7 +190,7 @@ io.on('connection', async (socket) => {
         const friends = [name, to]
         for (const number in friends) {
             let senderLogin = name
-            let recipientLogin = to
+            let recipientLogin = to   
 
             if (number == 1) {
                 senderLogin = to,
@@ -226,6 +230,9 @@ io.on('connection', async (socket) => {
 
     socket.on('disconnect', () => {
         users = users.filter(user => user.login !== client.login)
+    })
+    socket.on('leave group', (groupId) => {
+        socket.leave(groupId)
     })
 })
 

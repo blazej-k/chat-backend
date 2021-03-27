@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "error-overlay-webpack-plugin": "^0.4.2",
     "express": "^4.17.1",
     "mongodb": "^3.6.4",
     "mongoose": "^5.12.0",
