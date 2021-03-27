@@ -66,6 +66,7 @@ app.post('/signIn', async (req, res) => {
             waitingGroups,
             groups
         })
+        console.log(user)
     }
     else {
         res.send({ message: 'Invalid login or password' })
@@ -134,13 +135,25 @@ app.post('/joinToGroup', async (req, res) => {
     const { group: { groupId, groupName, members }, login, sex, decision } = req.body
 
     if (decision === 'accept') {
+
+        const otherUser = await ChatModel.findOne({ 'groups.groupId': groupId }) 
+        //get dialogues from user who exist in this group
+        let oldDialogues = []
+        if(otherUser){
+            oldDialogues = otherUser.groups.map(group => {
+                if(group.groupId === groupId){
+                    return group.dialogues
+                }
+            })
+        }
+
         await ChatModel.findOneAndUpdate({ login }, {
             "$push": {
                 groups: {
                     groupId,
                     groupName,
-                    dialogues: [],
-                    members //to fix
+                    dialogues: oldDialogues,
+                    members
                 }
             }
         }, { new: true, returnOriginal: false })
@@ -184,7 +197,7 @@ io.on('connection', async (socket) => {
         const messageObj = {
             text: message,
             date: new Date(),
-            sender: login
+            sender: login 
         }
         socket.to(groupId).emit('group message', messageObj, groupId)
 
