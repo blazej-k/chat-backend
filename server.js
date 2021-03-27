@@ -87,16 +87,16 @@ app.post('/inviteFriend', async (req, res) => {
 
 app.post('/inviteGroup', async (req) => {
     const { recipient, sender, groupName, groupId, members } = req.body.info
-    await ChatModel.findOneAndUpdate({ login: recipient }, { 
+    await ChatModel.findOneAndUpdate({ login: recipient }, {
         "$push": {
             waitingGroups: {
-                sender, 
+                sender,
                 groupName,
                 groupId,
                 date: new Date(),
-                members 
-            } 
-        } 
+                members
+            }
+        }
     })
 })
 
@@ -131,9 +131,9 @@ app.post('/createGroup', async (req, res) => {
 })
 
 app.post('/joinToGroup', async (req, res) => {
-    const { group: {groupId, groupName, members}, login, sex, decision} = req.body
+    const { group: { groupId, groupName, members }, login, sex, decision } = req.body
 
-    if(decision === 'accept'){
+    if (decision === 'accept') {
         await ChatModel.findOneAndUpdate({ login }, {
             "$push": {
                 groups: {
@@ -144,7 +144,7 @@ app.post('/joinToGroup', async (req, res) => {
                 }
             }
         }, { new: true, returnOriginal: false })
-    
+
         await ChatModel.updateMany({ 'groups.groupId': groupId }, {
             "$push": {
                 'groups.$.members': {
@@ -152,9 +152,9 @@ app.post('/joinToGroup', async (req, res) => {
                     sex
                 }
             }
-        }, {new: true, multi: true})
-    
-        const model = await ChatModel.findOne({login})
+        }, { new: true, multi: true })
+
+        const model = await ChatModel.findOne({ login })
         res.send(model.groups[model.groups.length - 1])
     }
     await ChatModel.findOneAndUpdate({ login }, { "$pull": { waitingGroups: { groupId } } }, { multi: true });
@@ -171,15 +171,32 @@ io.on('connection', async (socket) => {
 
     socket.on('add user to listeners', login => {
         users.push({ id: socket.id, login })
-        client = { id: socket.id, login }
+        client = { id: socket.id, login, groups: [] }
     })
 
     socket.on('join to group', (groupId) => {
-        console.log('ok', groupId)
-        socket.join(groupId)
+        if (client.groups) {
+            socket.join(groupId)
+            client.groups.push(groupId)
+        }
     })
-    socket.on('send group message', (groupId, message) => {
-        socket.to(groupId).emit('group message', message)
+    socket.on('send group message', async(groupId, message, login) => {
+        const messageObj = {
+            text: message,
+            date: new Date(),
+            sender: login
+        }
+        socket.to(groupId).emit('group message', messageObj, groupId)
+
+        await ChatModel.updateMany({ 'groups.groupId': groupId }, {
+            "$push": {
+                'groups.$.dialogues': {
+                    login,
+                    date: new Date(),
+                    text: message
+                }
+            }
+        })
     })
 
     socket.on('send private message', async ({ name, to, mess }) => {
@@ -190,7 +207,7 @@ io.on('connection', async (socket) => {
         const friends = [name, to]
         for (const number in friends) {
             let senderLogin = name
-            let recipientLogin = to   
+            let recipientLogin = to
 
             if (number == 1) {
                 senderLogin = to,
@@ -230,9 +247,9 @@ io.on('connection', async (socket) => {
 
     socket.on('disconnect', () => {
         users = users.filter(user => user.login !== client.login)
-    })
-    socket.on('leave group', (groupId) => {
-        socket.leave(groupId)
+        for (const group in client.groups) {
+            socket.leave(client.groups[group].groupId)
+        }
     })
 })
 
