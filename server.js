@@ -66,7 +66,6 @@ app.post('/signIn', async (req, res) => {
             waitingGroups,
             groups
         })
-        console.log(user)
     }
     else {
         res.send({ message: 'Invalid login or password' })
@@ -145,6 +144,7 @@ app.post('/joinToGroup', async (req, res) => {
                     return group.dialogues
                 }
             })
+            oldDialogues = oldDialogues.filter(dialogue => Array.isArray(dialogue))
         }
 
         await ChatModel.findOneAndUpdate({ login }, {
@@ -152,7 +152,7 @@ app.post('/joinToGroup', async (req, res) => {
                 groups: {
                     groupId,
                     groupName,
-                    dialogues: oldDialogues,
+                    dialogues: oldDialogues[0], //to fix
                     members
                 }
             }
