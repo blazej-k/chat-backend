@@ -20,36 +20,42 @@ const groups = []
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors())
-app.post('/saveUser', (req, res) => {
+app.post('/saveUser', async(req, res) => {
     const { login, password, sex } = req.body
-    const model = new ChatModel({
-        login,
-        password,
-        sex,
-        active: true,
-        date: new Date(),
-        waitingFriends: [],
-        waitingGroups: [],
-        friends: [],
-        groups: []
-    })
-    model.save(err => {
-        if (err) {
-            console.log(err)
-        }
-        else {
-            const { login, sex, friends, conversations, waitingFriends, groups, waitingGroups } = model
-            res.send({
-                login,
-                sex,
-                friends,
-                conversations,
-                waitingFriends,
-                waitingGroups,
-                groups
-            })
-        }
-    })
+    const otherUser = await ChatModel.findOne({ login })
+    if(!otherUser){
+        const model = new ChatModel({
+            login,
+            password,
+            sex,
+            active: true,
+            date: new Date(),
+            waitingFriends: [],
+            waitingGroups: [],
+            friends: [],
+            groups: []
+        })
+        model.save(err => {
+            if (err) {
+                console.log(err)
+            }
+            else {
+                const { login, sex, friends, conversations, waitingFriends, groups, waitingGroups } = model
+                res.send({
+                    login,
+                    sex,
+                    friends,
+                    conversations,
+                    waitingFriends,
+                    waitingGroups,
+                    groups
+                })
+            }
+        })
+    }
+    else{
+        res.send({message: 'Login is occupied'})
+    }
 })
 
 app.post('/signIn', async (req, res) => {
