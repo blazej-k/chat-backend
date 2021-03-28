@@ -52,6 +52,16 @@ app.post('/saveUser', async(req, res) => {
                 })
             }
         })
+        await CommunityModel.findOneAndUpdate({}, {
+            "$push": {
+                users: {
+                    login,
+                    password,
+                    sex,
+                    date: new Date(),
+                }
+            }
+        })
     }
     else{
         res.send({message: 'Login is occupied'})
