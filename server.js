@@ -20,10 +20,10 @@ const groups = []
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors())
-app.post('/saveUser', async(req, res) => {
+app.post('/saveUser', async (req, res) => {
     const { login, password, sex } = req.body
     const otherUser = await ChatModel.findOne({ login })
-    if(!otherUser){
+    if (!otherUser) {
         const model = new ChatModel({
             login,
             password,
@@ -63,8 +63,8 @@ app.post('/saveUser', async(req, res) => {
             }
         })
     }
-    else{
-        res.send({message: 'Login is occupied'})
+    else {
+        res.send({ message: 'Login is occupied' })
     }
 })
 
@@ -90,30 +90,43 @@ app.post('/signIn', async (req, res) => {
 
 app.post('/inviteFriend', async (req, res) => {
     const { sender, recipient } = req.body.info
-    await ChatModel.findOneAndUpdate({ login: recipient }, {
-        "$push": {
-            waitingFriends: {
-                sender,
-                date: new Date()
+    const invitedUser = await CommunityModel.findOne({ "users.login": recipient })
+    if (invitedUser) {
+        await ChatModel.findOneAndUpdate({ login: recipient }, {
+            "$push": {
+                waitingFriends: {
+                    sender,
+                    date: new Date()
+                }
             }
-        }
-    })
-    res.send(true)
+        })
+        res.send(true)
+    }
+    else {
+        res.send({ message: "No such a user" })
+    }
 })
 
-app.post('/inviteGroup', async (req) => {
+app.post('/inviteGroup', async (req, res) => {
     const { recipient, sender, groupName, groupId, members } = req.body.info
-    await ChatModel.findOneAndUpdate({ login: recipient }, {
-        "$push": {
-            waitingGroups: {
-                sender,
-                groupName,
-                groupId,
-                date: new Date(),
-                members
+    const invitedUser = await CommunityModel.findOne({ "users.login": recipient })
+    if (invitedUser) {
+        await ChatModel.findOneAndUpdate({ login: recipient }, {
+            "$push": {
+                waitingGroups: {
+                    sender,
+                    groupName,
+                    groupId,
+                    date: new Date(),
+                    members
+                }
             }
-        }
-    })
+        })
+        res.send(true)
+    }
+    else{
+        res.send({ message: "No such a user" })
+    }
 })
 
 app.post('/confirmFriend', async (req, res) => {
@@ -151,12 +164,12 @@ app.post('/joinToGroup', async (req, res) => {
 
     if (decision === 'accept') {
 
-        const otherUser = await ChatModel.findOne({ 'groups.groupId': groupId }) 
+        const otherUser = await ChatModel.findOne({ 'groups.groupId': groupId })
         //get dialogues from user who exist in this group
         let oldDialogues = []
-        if(otherUser){
+        if (otherUser) {
             oldDialogues = otherUser.groups.map(group => {
-                if(group.groupId === groupId){
+                if (group.groupId === groupId) {
                     return group.dialogues
                 }
             })
@@ -189,6 +202,18 @@ app.post('/joinToGroup', async (req, res) => {
     await ChatModel.findOneAndUpdate({ login }, { "$pull": { waitingGroups: { groupId } } }, { multi: true });
 })
 
+app.get('/getUsers', async(req, res) => {
+    const [community] = await CommunityModel.find({})
+    const users = community.users.map(user => {
+        return {
+            login: user.login,
+            sex: user.sex,
+            _id: user._id
+        }
+    })
+    res.send(users)
+})
+
 
 io.on('connection', async (socket) => {
     let client = {}
@@ -198,7 +223,7 @@ io.on('connection', async (socket) => {
         groups.push(group)
     }
 
-    socket.on('add user to listeners', login => {
+    socket.on('add user to listeners', login => { 
         users.push({ id: socket.id, login })
         client = { id: socket.id, login, groups: [] }
     })
@@ -209,11 +234,11 @@ io.on('connection', async (socket) => {
             client.groups.push(groupId)
         }
     })
-    socket.on('send group message', async(groupId, message, login) => {
+    socket.on('send group message', async (groupId, message, login) => {
         const messageObj = {
             text: message,
             date: new Date(),
-            sender: login 
+            sender: login
         }
         socket.to(groupId).emit('group message', messageObj, groupId)
 
