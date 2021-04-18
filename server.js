@@ -275,6 +275,7 @@ io.on('connection', async (socket) => {
                 await ChatModel.findOneAndUpdate({ login: senderLogin, "conversations.login": recipientLogin }, {
                     "$push": {
                         "conversations.$.dialogues": {
+                            from: senderLogin,
                             date: new Date(),
                             text: mess
                         }
@@ -289,6 +290,7 @@ io.on('connection', async (socket) => {
                             login: recipientLogin,
                             dialogues:
                             {
+                                from: senderLogin,
                                 date: new Date(),
                                 text: mess
                             }

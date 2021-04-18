@@ -13,6 +13,7 @@ const schema = new Schema({
             id: String,
             dialogues: [
                 {
+                    from: String,
                     date: Date,
                     text: String
                 }
