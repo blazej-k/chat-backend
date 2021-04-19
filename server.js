@@ -255,8 +255,8 @@ io.on('connection', async (socket) => {
 
     socket.on('send private message', async ({ name, to, mess }) => {
         const recipient = users.find(user => user.login === to)
-        if (recipient.id) {
-            socket.to(recipient.id).emit('private message', { from: name, mess })
+        if (recipient) {
+            socket.to(recipient.id).emit('private message', { from: name, text: mess })
         }
         const friends = [name, to]
         for (const number in friends) {
@@ -265,7 +265,7 @@ io.on('connection', async (socket) => {
 
             if (number == 1) {
                 senderLogin = to,
-                    recipientLogin = name
+                recipientLogin = name
             }
 
             const sender = await ChatModel.findOne({ login: senderLogin })
@@ -275,7 +275,7 @@ io.on('connection', async (socket) => {
                 await ChatModel.findOneAndUpdate({ login: senderLogin, "conversations.login": recipientLogin }, {
                     "$push": {
                         "conversations.$.dialogues": {
-                            from: senderLogin,
+                            from: name,
                             date: new Date(),
                             text: mess
                         }
@@ -290,7 +290,7 @@ io.on('connection', async (socket) => {
                             login: recipientLogin,
                             dialogues:
                             {
-                                from: senderLogin,
+                                from: name,
                                 date: new Date(),
                                 text: mess
                             }
