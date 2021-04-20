@@ -14,7 +14,7 @@ const schema = new Schema({
             dialogues: [
                 {
                     from: String,
-                    date: Date,
+                    date: Number,
                     text: String
                 }
             ]

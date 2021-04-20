@@ -13,7 +13,6 @@ const { nanoid } = require('nanoid')
 const ChatModel = require('./models/ChatModel')
 const CommunityModel = require('./models/CommunityModel');
 
-const messages = []
 let users = []
 const groups = []
 
