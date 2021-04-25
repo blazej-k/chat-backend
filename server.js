@@ -6,8 +6,10 @@ const mongoose = require('mongoose');
 const io = require('socket.io')(server, {
     cors: {
         origin: "http://localhost:1000",
-        methods: ["GET", "POST"]
-    }
+        methods: ["GET", "POST"],
+    },
+    reconnectionDelay: 0,
+    randomizationFactor: 0
 })
 const { nanoid } = require('nanoid')
 const ChatModel = require('./models/ChatModel')
@@ -123,7 +125,7 @@ app.post('/inviteGroup', async (req, res) => {
         })
         res.send(true)
     }
-    else{
+    else {
         res.send({ message: "No such a user" })
     }
 })
@@ -201,7 +203,7 @@ app.post('/joinToGroup', async (req, res) => {
     await ChatModel.findOneAndUpdate({ login }, { "$pull": { waitingGroups: { groupId } } }, { multi: true });
 })
 
-app.get('/getUsers', async(req, res) => {
+app.get('/getUsers', async (req, res) => {
     const [community] = await CommunityModel.find({})
     const users = community.users.map(user => {
         return {
@@ -213,18 +215,30 @@ app.get('/getUsers', async(req, res) => {
     res.send(users)
 })
 
+app.post('/getCurrentUser', async (req, res) => {
+    const {login} = req.body
+    const user = await ChatModel.findOne({login})
+    console.log(user)
+})
+
 
 io.on('connection', async (socket) => {
     let client = {}
 
+    console.log('ok')
     const community = await CommunityModel.find({})
     for (group in community.groups) {
         groups.push(group)
     }
 
-    socket.on('add user to listeners', login => { 
-        users.push({ id: socket.id, login })
-        client = { id: socket.id, login, groups: [] }
+    socket.on('error', (e) => console.log(e))
+
+    socket.on('add user to listeners', login => {
+        if (login) {
+            users.push({ id: socket.id, login })
+            console.log(users)
+            client = { id: socket.id, login, groups: [] }
+        }
     })
 
     socket.on('join to group', (groupId) => {
@@ -253,55 +267,60 @@ io.on('connection', async (socket) => {
     })
 
     socket.on('send private message', async ({ name, to, mess }) => {
-        const recipient = users.find(user => user.login === to)
-        if (recipient) {
-            socket.to(recipient.id).emit('private message', { from: name, text: mess })
-        }
-        const friends = [name, to]
-        for (const number in friends) {
-            let senderLogin = name
-            let recipientLogin = to
-
-            if (number == 1) {
-                senderLogin = to,
-                recipientLogin = name
+        if (mess.length > 0) {
+            const recipient = users.find(user => user.login === to)
+            console.log('spm', recipient)
+            if (recipient) {
+                console.log('to', recipient, 'from', name, mess)
+                socket.to(recipient.id).emit('private message', { from: name, text: mess })
             }
+            const friends = [name, to]
+            for (const number in friends) {
+                let senderLogin = name
+                let recipientLogin = to
 
-            const sender = await ChatModel.findOne({ login: senderLogin })
-            const recipientIndex = sender.conversations.findIndex(el => el.login === recipientLogin)
+                if (number == 1) {
+                    senderLogin = to,
+                        recipientLogin = name
+                }
 
-            if (recipientIndex !== -1) {
-                await ChatModel.findOneAndUpdate({ login: senderLogin, "conversations.login": recipientLogin }, {
-                    "$push": {
-                        "conversations.$.dialogues": {
-                            from: name,
-                            date: new Date(),
-                            text: mess
-                        }
-                    }
-                })
-            }
-            else {
-                await ChatModel.findOneAndUpdate({ login: senderLogin }, {
-                    "$push": {
-                        conversations:
-                        {
-                            login: recipientLogin,
-                            dialogues:
-                            {
+                const sender = await ChatModel.findOne({ login: senderLogin })
+                const recipientIndex = sender.conversations.findIndex(el => el.login === recipientLogin)
+
+                if (recipientIndex !== -1) {
+                    await ChatModel.findOneAndUpdate({ login: senderLogin, "conversations.login": recipientLogin }, {
+                        "$push": {
+                            "conversations.$.dialogues": {
                                 from: name,
                                 date: new Date(),
                                 text: mess
                             }
                         }
-                    }
-                })
+                    })
+                }
+                else {
+                    await ChatModel.findOneAndUpdate({ login: senderLogin }, {
+                        "$push": {
+                            conversations:
+                            {
+                                login: recipientLogin,
+                                dialogues:
+                                {
+                                    from: name,
+                                    date: new Date(),
+                                    text: mess
+                                }
+                            }
+                        }
+                    })
+                }
             }
         }
     })
 
     socket.on('disconnect', () => {
         users = users.filter(user => user.login !== client.login)
+        console.log('diss', users)
         for (const group in client.groups) {
             socket.leave(client.groups[group].groupId)
         }
